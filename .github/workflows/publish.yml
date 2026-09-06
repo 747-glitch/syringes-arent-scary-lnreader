@@ -1,0 +1,83 @@
+name: Build LNReader Plugin
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get plugin source
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Get LNReader plugin builder
+        uses: actions/checkout@v4
+        with:
+          repository: LNReader/lnreader-plugins
+          path: builder
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: builder/package-lock.json
+
+      - name: Copy plugin into builder
+        run: |
+          rm -rf builder/plugins/english/*
+          rm -rf builder/public/static/src/en/syringesarentscary
+
+          cp source/plugins/english/syringesarentscary.ts \
+             builder/plugins/english/syringesarentscary.ts
+
+          mkdir -p builder/public/static/src/en/syringesarentscary
+
+          cp source/public/static/src/en/syringesarentscary/icon.png \
+             builder/public/static/src/en/syringesarentscary/icon.png
+
+      - name: Install dependencies
+        working-directory: builder
+        run: npm ci
+
+      - name: Compile plugin
+        working-directory: builder
+        run: npm run build:compile
+
+      - name: Build plugin manifest
+        working-directory: builder
+        run: npm run build:manifest
+
+      - name: Publish plugin branch
+        working-directory: builder
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          BRANCH="plugins/v${VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote remove origin
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+
+          git checkout --orphan "$BRANCH"
+          git reset
+
+          mkdir -p .js/src
+
+          cp -r .js/plugins .js/src/plugins
+
+          git add -f public/static .dist .js/src/plugins total.svg
+          git commit -m "Publish LNReader plugin"
+          git push -f origin "$BRANCH"
