@@ -38,13 +38,6 @@ jobs:
           git remote remove origin
           git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
 
-      - name: Remove official plugins
-        run: |
-          rm -rf builder/plugins/*
-          mkdir -p builder/plugins/english
-
-          rm -rf builder/public/static/src/en/syringesarentscary
-
       - name: Copy plugin into builder
         run: |
           cp source/plugins/english/syringesarentscary.ts \
