@@ -38,11 +38,15 @@ jobs:
           git remote remove origin
           git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
 
-      - name: Copy plugin into builder
+      - name: Remove official plugins
         run: |
-          rm -rf builder/plugins/english/*
+          rm -rf builder/plugins/*
+          mkdir -p builder/plugins/english
+
           rm -rf builder/public/static/src/en/syringesarentscary
 
+      - name: Copy plugin into builder
+        run: |
           cp source/plugins/english/syringesarentscary.ts \
              builder/plugins/english/syringesarentscary.ts
 
@@ -61,9 +65,10 @@ jobs:
 
       - name: Build plugin manifest
         working-directory: builder
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          BRANCH="plugins/v${VERSION}" npm run build:manifest
+        env:
+          USER_CONTENT_BASE: https://raw.githubusercontent.com/747-glitch/syringes-arent-scary-lnreader/plugins/v3.0.0
+          BRANCH: plugins/v3.0.0
+        run: npm run build:manifest
 
       - name: Publish plugin branch
         working-directory: builder
