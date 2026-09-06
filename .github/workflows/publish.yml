@@ -32,6 +32,12 @@ jobs:
           cache: npm
           cache-dependency-path: builder/package-lock.json
 
+      - name: Configure builder repository
+        working-directory: builder
+        run: |
+          git remote remove origin
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+
       - name: Copy plugin into builder
         run: |
           rm -rf builder/plugins/english/*
@@ -55,21 +61,15 @@ jobs:
 
       - name: Build plugin manifest
         working-directory: builder
-        run: npm run build:manifest
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          BRANCH="plugins/v${VERSION}" npm run build:manifest
 
       - name: Publish plugin branch
         working-directory: builder
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           BRANCH="plugins/v${VERSION}"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git remote remove origin
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
 
           git checkout --orphan "$BRANCH"
           git reset
