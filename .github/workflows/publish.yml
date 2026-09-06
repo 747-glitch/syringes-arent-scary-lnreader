@@ -71,6 +71,9 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           BRANCH="plugins/v${VERSION}"
 
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git checkout --orphan "$BRANCH"
           git reset
 
