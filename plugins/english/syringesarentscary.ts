@@ -69,11 +69,29 @@ class SyringesArentScary implements Plugin.PluginBase {
       const path = this.normalizePath(href);
       if (!path) return;
 
-      // The project list is made up of links beneath this WordPress page.
-      // Avoid links to the site's navigation, Patreon, comments, etc.
+      // WordPress stores project posts at the site root, not below the
+      // translated-works page.
+      let absolute: URL;
+      try {
+        absolute = new URL(href, this.site);
+      } catch {
+        return;
+      }
+
+      if (absolute.hostname !== new URL(this.site).hostname) return;
+
+      const ignoredPaths = new Set([
+        '/',
+        this.translatedWorksPath,
+        '/contact/',
+        '/give-a-thank-you-for-the-chapter/',
+      ]);
+
+      if (ignoredPaths.has(absolute.pathname)) return;
       if (
-        !path.startsWith(this.translatedWorksPath) ||
-        path === this.translatedWorksPath
+        absolute.pathname.startsWith('/wp-') ||
+        absolute.pathname.startsWith('/page/') ||
+        /\.(?:jpg|jpeg|png|gif|webp|svg|css|js)$/i.test(absolute.pathname)
       ) {
         return;
       }
@@ -202,10 +220,15 @@ class SyringesArentScary implements Plugin.PluginBase {
       });
     });
 
+    const resolvedCover =
+      cover === defaultCover
+        ? defaultCover
+        : new URL(cover, this.site).toString();
+
     return {
       path,
       name,
-      cover: this.absoluteUrl(cover),
+      cover: resolvedCover,
       author,
       genres: 'English,Translation',
       status: NovelStatus.Unknown,
