@@ -9,10 +9,9 @@ class SyringesArentScary implements Plugin.PluginBase {
   name = "Syringes Aren't Scary";
   icon = 'src/en/syringesarentscary/icon.png';
   site = 'https://stabbingwithasyringe.home.blog';
-  version = '1.0.1';
+  version = '1.0.2';
 
-  private translatedWorksPath =
-    '/stabbingwithasyringe-translated-works/';
+  private translatedWorksPath = '/stabbingwithasyringe-translated-works/';
 
   private normalizePath(path: string): string {
     if (!path) return '';
@@ -38,9 +37,7 @@ class SyringesArentScary implements Plugin.PluginBase {
   }
 
   private getChapterNumber(title: string, fallback: number): number {
-    const match = title.match(
-      /(?:chapter|ch\.?)\s*(\d+(?:\.\d+)?)/i,
-    );
+    const match = title.match(/(?:chapter|ch\.?)\s*(\d+(?:\.\d+)?)/i);
     return match ? Number(match[1]) : fallback;
   }
 
@@ -69,8 +66,6 @@ class SyringesArentScary implements Plugin.PluginBase {
       const path = this.normalizePath(href);
       if (!path) return;
 
-      // WordPress stores project posts at the site root, not below the
-      // translated-works page.
       let absolute: URL;
       try {
         absolute = new URL(href, this.site);
@@ -200,7 +195,6 @@ class SyringesArentScary implements Plugin.PluginBase {
       if (!chapterPath || chapterPath === path) return;
       if (seen.has(chapterPath)) return;
 
-      // TOC links are identifiable by chapter/prologue/epilogue/omake labels.
       const looksLikeChapter =
         /\bchapter\b/i.test(title) ||
         /\bprologue\b/i.test(title) ||
@@ -263,39 +257,53 @@ class SyringesArentScary implements Plugin.PluginBase {
       ].join(','),
     ).remove();
 
-    // Remove WordPress's previous/TOC/next links from the reading body.
+    // Clean up navigation and promo links
     content.find('a').each((_, element) => {
       const anchor = $(element);
       const text = this.cleanText(anchor.text());
       const href = anchor.attr('href') || '';
 
       if (
-        /^(previous chapter|table of contents|next chapter)$/i.test(text) ||
+        /^(previous chapter|table of contents|next chapter|<--|-->)$/i.test(text) ||
         /leave a comment|support me on patreon/i.test(text) ||
         /patreon\.com/i.test(href)
       ) {
-        anchor.replaceWith('');
+        anchor.remove();
       }
     });
 
-    // Keep chapter images, but discard obvious WordPress tracking pixels.
+    // Process images: ensure absolute URLs and strip tracking elements
     content.find('img').each((_, element) => {
-      const src = $(element).attr('src') || '';
-      const alt = $(element).attr('alt') || '';
+      const img = $(element);
+      const src = img.attr('src') || img.attr('data-orig-file') || '';
+      const alt = img.attr('alt') || '';
 
       if (
+        !src ||
         /pixel\.wp\.com/i.test(src) ||
         /gravatar/i.test(src) ||
         /tracking|avatar|pixel/i.test(alt)
       ) {
-        $(element).remove();
+        img.remove();
+      } else {
+        img.attr('src', new URL(src, this.site).toString());
+      }
+    });
+
+    // Remove empty elements left over from removed anchors
+    content.find('p, div').each((_, element) => {
+      const el = $(element);
+      if (!el.text().trim() && !el.find('img').length) {
+        el.remove();
       }
     });
 
     return content.html()?.trim() || '';
   }
 
-  resolveUrl = (path: string) => this.absoluteUrl(path);
+  async resolveUrl(path: string): Promise<string> {
+    return this.absoluteUrl(path);
+  }
 }
 
 export default new SyringesArentScary();
